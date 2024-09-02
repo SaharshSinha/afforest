@@ -2,6 +2,6 @@
 //     return "Hello World!"
 // }
 
-import Forest, { changeItemInTree, deleteItemInTree, insertItemInTree } from './afforest';
+import Forest, { changeItemInTree, deleteItemInTree, insertItemInTree, ForestNode } from './afforest';
 export default Forest;
-export { changeItemInTree, deleteItemInTree, insertItemInTree };
+export { changeItemInTree, deleteItemInTree, insertItemInTree, ForestNode };

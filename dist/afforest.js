@@ -1,28 +1,21 @@
-"use strict";
-/**
- * Renders a forest component.
- *
- * @template T - The type of the items in the forest.
- * @param {Object} props - The props for the forest component.
- * @param {Array<T>} props.trees - The array of trees to render.
- * @param {(node: T) => T[]} props.getSubTreesCallback - The callback function to get the sub-trees of a node.
- * @param {(node: T, trees: T[]) => void} [props.setSubTreesCallback] - The optional callback function to set the sub-trees of a node.
- * @param {(newTree: Array<T>) => void} [props.onTreesChange] - The optional callback function to handle tree changes.
- * @param {(props: { item: T, depth: number, locationIndex: number[], divRef: RefObject<HTMLDivElement>, changeItem: (changedItem: T, idxs?: number[]) => void, deleteItem: (idxs?: number[]) => void, insertItem: (newItem: T, idx?: number, idxs?: number[]) => void, locateItem: () => number[], subTrees: React.JSX.Element }) => React.JSX.Element} props.renderItem - The function to render each item in the forest.
- */
 'use client';
+'use strict';
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ForestNode = void 0;
 exports.default = Forest;
 exports.changeItemInTree = changeItemInTree;
 exports.deleteItemInTree = deleteItemInTree;
 exports.insertItemInTree = insertItemInTree;
 const react_1 = __importDefault(require("react"));
 const react_2 = require("react");
+class ForestNode {
+}
+exports.ForestNode = ForestNode;
 function Forest(props) {
-    return react_1.default.createElement(AfforestInternal, { idxs: [], getSubTreesCallback: props.getSubTreesCallback, setSubTreesCallback: props.setSubTreesCallback, trees: props.trees, renderItem: props.renderItem, changeItemCallback: changeItem, deleteItemCallback: deleteItem, insertItemCallback: insertItem, locateItemCallback: locateItem });
+    return react_1.default.createElement(ForestNodeInternal, { idxs: [], getSubTreesCallback: props.getSubTreesCallback, setSubTreesCallback: props.setSubTreesCallback, trees: props.trees, renderItem: props.renderItem, changeItemCallback: changeItem, deleteItemCallback: deleteItem, insertItemCallback: insertItem, locateItemCallback: locateItem, parentNode: undefined });
     function changeItem(changedItem, idxs) {
         const newTrees = changeItemInTree(props.trees, changedItem, idxs !== null && idxs !== void 0 ? idxs : [], props.getSubTreesCallback);
         props.onTreesChange && props.onTreesChange(newTrees);
@@ -41,6 +34,37 @@ function Forest(props) {
         const newTrees = insertItemInTree(props.trees, props.getSubTreesCallback, props.setSubTreesCallback, newItem, idxs !== null && idxs !== void 0 ? idxs : [], idx);
         props.onTreesChange && props.onTreesChange(newTrees);
     }
+}
+function ForestNodeInternal(props) {
+    return (props.trees.map((item, mapIndex) => {
+        const thisItemsLocationIndex = props.idxs.concat(mapIndex);
+        const divRef = (0, react_2.createRef)();
+        return (react_1.default.createElement("div", { ref: divRef, key: mapIndex }, props.renderItem({
+            item: item,
+            parentProps: props.parentProps,
+            parentNode: props.parentNode,
+            depth: thisItemsLocationIndex.length,
+            treeLocationIndex: thisItemsLocationIndex,
+            localLocationIndex: mapIndex,
+            divRef: divRef,
+            update: (changedItem, idxs) => props.changeItemCallback(changedItem, thisItemsLocationIndex),
+            delete: (idxs) => props.deleteItemCallback(thisItemsLocationIndex),
+            insertChild: (newItem, idx, idxs) => props.insertItemCallback(newItem, idx, thisItemsLocationIndex),
+            renderSubTrees: (parentProps) => react_1.default.createElement(ForestNodeInternal, { parentProps: parentProps, parentNode: {
+                    item: item,
+                    parentProps: props.parentProps,
+                    parentNode: props.parentNode,
+                    depth: thisItemsLocationIndex.length,
+                    treeLocationIndex: thisItemsLocationIndex,
+                    localLocationIndex: mapIndex,
+                    divRef: divRef,
+                    update: (changedItem, idxs) => props.changeItemCallback(changedItem, thisItemsLocationIndex),
+                    delete: (idxs) => props.deleteItemCallback(thisItemsLocationIndex),
+                    insertChild: (newItem, idx, idxs) => props.insertItemCallback(newItem, idx, thisItemsLocationIndex),
+                    renderSubTrees: () => react_1.default.createElement(react_1.default.Fragment, null),
+                }, getSubTreesCallback: props.getSubTreesCallback, setSubTreesCallback: props.setSubTreesCallback, idxs: thisItemsLocationIndex, trees: props.getSubTreesCallback(item), renderItem: props.renderItem, changeItemCallback: props.changeItemCallback, deleteItemCallback: props.deleteItemCallback, insertItemCallback: props.insertItemCallback, locateItemCallback: props.locateItemCallback })
+        })));
+    }));
 }
 function changeItemInTree(trees, changedItem, idxs, getSubTreesCallback) {
     const newTrees = [...trees];
@@ -121,21 +145,4 @@ function insertItemInTree(trees, getSubTreesCallback, setSubTreesCallback, newIt
         }
     }
     return newTrees;
-}
-function AfforestInternal(props) {
-    return (props.trees.map((item, mapIndex) => {
-        const thisItemsLocationIndex = props.idxs.concat(mapIndex);
-        const divRef = (0, react_2.createRef)();
-        return (react_1.default.createElement("div", { ref: divRef, key: mapIndex }, props.renderItem({
-            item: item,
-            depth: thisItemsLocationIndex.length,
-            locationIndex: thisItemsLocationIndex,
-            divRef: divRef,
-            changeItem: (changedItem, idxs) => props.changeItemCallback(changedItem, thisItemsLocationIndex),
-            deleteItem: (idxs) => props.deleteItemCallback(thisItemsLocationIndex),
-            insertItem: (newItem, idx, idxs) => props.insertItemCallback(newItem, idx, thisItemsLocationIndex),
-            locateItem: (idxs) => props.locateItemCallback(thisItemsLocationIndex),
-            subTrees: react_1.default.createElement(AfforestInternal, { getSubTreesCallback: props.getSubTreesCallback, setSubTreesCallback: props.setSubTreesCallback, idxs: thisItemsLocationIndex, trees: props.getSubTreesCallback(item), renderItem: props.renderItem, changeItemCallback: props.changeItemCallback, deleteItemCallback: props.deleteItemCallback, insertItemCallback: props.insertItemCallback, locateItemCallback: props.locateItemCallback })
-        })));
-    }));
 }

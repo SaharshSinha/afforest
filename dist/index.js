@@ -26,9 +26,10 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.insertItemInTree = exports.deleteItemInTree = exports.changeItemInTree = void 0;
+exports.ForestNode = exports.insertItemInTree = exports.deleteItemInTree = exports.changeItemInTree = void 0;
 const afforest_1 = __importStar(require("./afforest"));
 Object.defineProperty(exports, "changeItemInTree", { enumerable: true, get: function () { return afforest_1.changeItemInTree; } });
 Object.defineProperty(exports, "deleteItemInTree", { enumerable: true, get: function () { return afforest_1.deleteItemInTree; } });
 Object.defineProperty(exports, "insertItemInTree", { enumerable: true, get: function () { return afforest_1.insertItemInTree; } });
+Object.defineProperty(exports, "ForestNode", { enumerable: true, get: function () { return afforest_1.ForestNode; } });
 exports.default = afforest_1.default;

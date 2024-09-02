@@ -1,39 +1,33 @@
-/**
- * Renders a forest component.
- *
- * @template T - The type of the items in the forest.
- * @param {Object} props - The props for the forest component.
- * @param {Array<T>} props.trees - The array of trees to render.
- * @param {(node: T) => T[]} props.getSubTreesCallback - The callback function to get the sub-trees of a node.
- * @param {(node: T, trees: T[]) => void} [props.setSubTreesCallback] - The optional callback function to set the sub-trees of a node.
- * @param {(newTree: Array<T>) => void} [props.onTreesChange] - The optional callback function to handle tree changes.
- * @param {(props: { item: T, depth: number, locationIndex: number[], divRef: RefObject<HTMLDivElement>, changeItem: (changedItem: T, idxs?: number[]) => void, deleteItem: (idxs?: number[]) => void, insertItem: (newItem: T, idx?: number, idxs?: number[]) => void, locateItem: () => number[], subTrees: React.JSX.Element }) => React.JSX.Element} props.renderItem - The function to render each item in the forest.
- */
+
 'use client';
+'use strict';
 
 import React from "react";
 import { createRef, RefObject } from "react";
 
+export class ForestNode<TItem, TProps = void> {
+  item!: TItem;
+  depth!: number;
+  treeLocationIndex!: number[];
+  localLocationIndex!: number;
+  divRef!: RefObject<HTMLDivElement>;
+  update!: (changedItem: TItem, idxs?: number[]) => void; //update
+  delete!: (idxs?: number[]) => void; //delete
+  insertChild!: (newItem: TItem, idx?: number, idxs?: number[]) => void; //insertChild
+  renderSubTrees!: (props: TProps) => React.JSX.Element;
+  parentProps!: TProps | undefined;
+  parentNode?: ForestNode<TItem, TProps>;
+}
 
-export default function Forest<T>(props: { 
-    trees: Array<T>,
-    getSubTreesCallback: (node: T) => T[],
-    setSubTreesCallback?: (node: T, trees: T[]) => void,
-    onTreesChange?: (newTree: Array<T>) => void,
-    renderItem: (props: { 
-      item: T, 
-      depth: number,
-      locationIndex: number[],
-      divRef: RefObject<HTMLDivElement>,
-      changeItem: (changedItem: T, idxs?: number[]) => void,
-      deleteItem: (idxs?: number[]) => void,
-      insertItem: (newItem: T, idx?: number, idxs?: number[]) => void,
-      locateItem: () => number[],
-      subTrees: React.JSX.Element,
-    }) => React.JSX.Element,
+export default function Forest<TItem, TProps = void>(props: { 
+    trees: Array<TItem>,
+    getSubTreesCallback: (node: TItem) => TItem[],
+    setSubTreesCallback?: (node: TItem, trees: TItem[]) => void,
+    onTreesChange?: (newTree: Array<TItem>) => void,
+    renderItem: (propsInternal: ForestNode<TItem, TProps>) => React.JSX.Element,
 }) {
 
-  return <AfforestInternal 
+  return <ForestNodeInternal 
     idxs={[]}
     getSubTreesCallback={props.getSubTreesCallback}
     setSubTreesCallback={props.setSubTreesCallback}
@@ -43,9 +37,10 @@ export default function Forest<T>(props: {
     deleteItemCallback={deleteItem}
     insertItemCallback={insertItem}
     locateItemCallback={locateItem}
+    parentNode={undefined}
   />;
 
-  function changeItem(changedItem: T, idxs?: number[]) {
+  function changeItem(changedItem: TItem, idxs?: number[]) {
     const newTrees = changeItemInTree(props.trees, changedItem, idxs??[], props.getSubTreesCallback);
     props.onTreesChange && props.onTreesChange(newTrees);
   }
@@ -59,7 +54,7 @@ export default function Forest<T>(props: {
     return idxs || [];
   }
 
-  function insertItem(newItem: T, idx?: number, idxs?: number[]): void {
+  function insertItem(newItem: TItem, idx?: number, idxs?: number[]): void {
     if (!props.setSubTreesCallback) {
       throw new Error('setSubTreesCallback is required for insertItem');
     }
@@ -68,6 +63,65 @@ export default function Forest<T>(props: {
   }
 }
 
+function ForestNodeInternal<TNode, TProps = void>(props: { 
+  idxs: number[],
+  trees: Array<TNode>,
+  getSubTreesCallback: (node: TNode) => TNode[],
+  setSubTreesCallback?: (node: TNode, tree: TNode[]) => void,
+  renderItem: (props: ForestNode<TNode, TProps>) => React.JSX.Element,
+  changeItemCallback: (changedItem: TNode, idxs?: number[]) => void,
+  deleteItemCallback: (idxs?: number[]) => void,
+  insertItemCallback: (newItem: TNode, idx?: number, idxs?: number[]) => void,
+  locateItemCallback: (idxs?: number[]) => number[],
+  parentProps?: TProps,
+  parentNode?: ForestNode<TNode, TProps>
+}) {
+return (props.trees.map((item, mapIndex) => {
+  const thisItemsLocationIndex = props.idxs.concat(mapIndex);
+  const divRef = createRef<HTMLDivElement>();
+  return (
+    <div 
+      ref={divRef}
+      key={mapIndex}>
+      {props.renderItem({
+        item: item,
+        parentProps: props.parentProps,
+        parentNode: props.parentNode,
+        depth: thisItemsLocationIndex.length,
+        treeLocationIndex: thisItemsLocationIndex,
+        localLocationIndex: mapIndex,
+        divRef: divRef,
+        update: (changedItem: TNode, idxs?: number[]) => props.changeItemCallback(changedItem, thisItemsLocationIndex),
+        delete: (idxs?: number[]) => props.deleteItemCallback(thisItemsLocationIndex),
+        insertChild: (newItem: TNode, idx?: number, idxs?: number[]) => props.insertItemCallback(newItem, idx, thisItemsLocationIndex),
+        renderSubTrees: (parentProps: TProps) => <ForestNodeInternal
+          parentProps={parentProps}
+          parentNode={{
+            item: item,
+            parentProps: props.parentProps,
+            parentNode: props.parentNode,
+            depth: thisItemsLocationIndex.length,
+            treeLocationIndex: thisItemsLocationIndex,
+            localLocationIndex: mapIndex,
+            divRef: divRef,
+            update: (changedItem: TNode, idxs?: number[]) => props.changeItemCallback(changedItem, thisItemsLocationIndex),
+            delete: (idxs?: number[]) => props.deleteItemCallback(thisItemsLocationIndex),
+            insertChild: (newItem: TNode, idx?: number, idxs?: number[]) => props.insertItemCallback(newItem, idx, thisItemsLocationIndex),
+            renderSubTrees: () => <></>,}}
+          getSubTreesCallback={props.getSubTreesCallback}
+          setSubTreesCallback={props.setSubTreesCallback}
+          idxs={thisItemsLocationIndex}
+          trees={props.getSubTreesCallback(item)}
+          renderItem={props.renderItem}
+          changeItemCallback={props.changeItemCallback}
+          deleteItemCallback={props.deleteItemCallback}
+          insertItemCallback={props.insertItemCallback}
+          locateItemCallback={props.locateItemCallback} />
+      })}
+    </div>
+  );
+}));
+}
 
 export function changeItemInTree<T>(
   trees: T[], 
@@ -127,6 +181,7 @@ export function deleteItemInTree<T>(
   return newTrees;
 }
 
+
 export function insertItemInTree<T>(
   trees: T[], 
   getSubTreesCallback: (node: T) => T[],
@@ -157,58 +212,4 @@ export function insertItemInTree<T>(
     }
   }
   return newTrees;
-}
-
-function AfforestInternal<T>(props: { 
-    idxs: number[],
-    trees: Array<T>,
-    getSubTreesCallback: (node: T) => T[],
-    setSubTreesCallback?: (node: T, tree: T[]) => void,
-    renderItem: (props: { 
-      item: T, 
-      depth: number,
-      locationIndex: number[],
-      divRef: RefObject<HTMLDivElement>,
-      changeItem: (changedItem: T, idxs?: number[]) => void,
-      deleteItem: (idxs?: number[]) => void,
-      insertItem: (newItem: T, idx?: number, idxs?: number[]) => void,
-      locateItem: () => number[],
-      subTrees: React.JSX.Element,
-    }) => React.JSX.Element,
-    changeItemCallback: (changedItem: T, idxs?: number[]) => void,
-    deleteItemCallback: (idxs?: number[]) => void,
-    insertItemCallback: (newItem: T, idx?: number, idxs?: number[]) => void,
-    locateItemCallback: (idxs?: number[]) => number[],
-}) {
-  return (props.trees.map((item, mapIndex) => {
-    const thisItemsLocationIndex = props.idxs.concat(mapIndex);
-    const divRef = createRef<HTMLDivElement>();
-    return (
-      <div 
-        ref={divRef}
-        key={mapIndex}>
-        {props.renderItem({ 
-          item: item, 
-          depth: thisItemsLocationIndex.length,
-          locationIndex: thisItemsLocationIndex,
-          divRef: divRef,
-          changeItem: (changedItem: T, idxs?: number[]) => props.changeItemCallback(changedItem, thisItemsLocationIndex),
-          deleteItem: (idxs?: number[]) => props.deleteItemCallback(thisItemsLocationIndex),
-          insertItem: (newItem: T, idx?: number, idxs?: number[]) => props.insertItemCallback(newItem, idx, thisItemsLocationIndex),
-          locateItem: (idxs?: number[]) => props.locateItemCallback(thisItemsLocationIndex),
-          subTrees: <AfforestInternal
-            getSubTreesCallback={props.getSubTreesCallback}
-            setSubTreesCallback={props.setSubTreesCallback} 
-            idxs={thisItemsLocationIndex}
-            trees={props.getSubTreesCallback(item)} 
-            renderItem={props.renderItem} 
-            changeItemCallback={props.changeItemCallback}
-            deleteItemCallback={props.deleteItemCallback}
-            insertItemCallback={props.insertItemCallback}
-            locateItemCallback={props.locateItemCallback}
-          />
-        })}
-      </div>
-    );
-  }));
 }
